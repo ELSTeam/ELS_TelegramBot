@@ -22,16 +22,40 @@ const (
 )
 
 type User struct {
-	Username string
-	Password string
-	State    UserState
+	Username        string
+	Password        string
+	State           UserState
+	AddContactState ContactAddState
 }
 
 type Contact struct {
 	Name  string `json:"name"`
-	Phone string `json:phone`
-	Email string `json:email`
+	Phone string `json:"phone"`
+	Email string `json:"email"`
 }
+
+// Struct for the function Add contact.
+type ContactAddToUser struct {
+	Username    string  `json:"username"`
+	ContactInfo Contact `json:"contact_info"`
+}
+
+// struct for adding new contact status
+type ContactAddState int
+
+const (
+	InitialAdd ContactAddState = iota
+	WaitingForUsernameAdd
+	WaitingForPhoneAdd
+	WaitingForEmailAdd
+	ConfirmationAdd
+	PositiveFullAdd
+	NegaiveFullAdd
+	Done
+)
+
+// contact instance to save the data from user bot.
+var global_contact Contact
 
 var users = make(map[int64]*User)
 
@@ -105,6 +129,7 @@ func main() {
 				if err != nil {
 					log.Println("Error sending message:", err)
 				}
+				user.AddContactState = Done
 				msg = tgbotapi.NewMessage(userID, "Menu")
 				_, err = bot.Send(msg)
 				if err != nil {
@@ -119,7 +144,10 @@ func main() {
 				}
 			}
 		case Connected:
-			if update.Message.Text == "getAllContacts" {
+			fmt.Println(user.AddContactState)
+			fmt.Println(user.State)
+			fmt.Println(update.Message.Text)
+			if update.Message.Text == "/getAllContacts" {
 				contacts, err := getAllContacts(user.Username)
 				if err != nil {
 					log.Println("Error getting contacts:", err)
@@ -136,6 +164,86 @@ func main() {
 				_, err = bot.Send(msg)
 				if err != nil {
 					log.Println("Error sending message:", err)
+				}
+			}
+			if update.Message.Text == "/addContact" {
+				user.AddContactState = InitialAdd
+				msg := tgbotapi.NewMessage(userID, "Please enter contact data:")
+				_, err := bot.Send(msg)
+				if err != nil {
+					log.Println("Error sending message:", err)
+				}
+			}
+			if user.AddContactState != Done {
+				switch user.AddContactState {
+				case InitialAdd:
+					user.AddContactState = WaitingForUsernameAdd
+					msg := tgbotapi.NewMessage(userID, "Contact's name:")
+					_, err := bot.Send(msg)
+					if err != nil {
+						log.Println("Error sending message:", err)
+					}
+				case WaitingForUsernameAdd:
+					global_contact.Name = update.Message.Text
+					user.AddContactState = WaitingForPhoneAdd
+					msg := tgbotapi.NewMessage(userID, "Contact's phone:")
+					_, err := bot.Send(msg)
+					if err != nil {
+						log.Println("Error sending message:", err)
+					}
+				case WaitingForPhoneAdd:
+					global_contact.Phone = update.Message.Text
+					user.AddContactState = WaitingForEmailAdd
+					msg := tgbotapi.NewMessage(userID, "Contact's email:")
+					_, err := bot.Send(msg)
+					if err != nil {
+						log.Println("Error sending message:", err)
+					}
+				case WaitingForEmailAdd:
+					global_contact.Email = update.Message.Text
+					user.AddContactState = ConfirmationAdd
+					msg := tgbotapi.NewMessage(userID, "Are you sure to add the new contact? please type yes")
+					_, err := bot.Send(msg)
+					if err != nil {
+						log.Println("Error sending message:", err)
+					}
+				// case ConfirmationAdd:
+				// 	if update.Message.Text == "YES" || update.Message.Text == "yes" {
+				// 		user.AddContactState = PositiveFullAdd
+				// 	} else {
+				// 		user.AddContactState = NegaiveFullAdd
+				// 	}
+				case ConfirmationAdd:
+					user.AddContactState = Done
+					if update.Message.Text == "YES" || update.Message.Text == "yes" {
+						fmt.Println("In positive add")
+						status_code, err := addContact(user.Username, global_contact.Name, global_contact.Phone, global_contact.Email)
+						if err != nil {
+							log.Println("Error sending message: ", err)
+						} else {
+							if status_code == 200 {
+								msg := tgbotapi.NewMessage(userID, "Contact Added.")
+								_, err := bot.Send(msg)
+								if err != nil {
+									log.Println("Error sending message:", err)
+								}
+							} else {
+								msg := tgbotapi.NewMessage(userID, "Error from server.")
+								_, err := bot.Send(msg)
+								if err != nil {
+									log.Println("Error sending message:", err)
+								}
+							}
+						}
+					} else {
+						msg := tgbotapi.NewMessage(userID, "Aborted.")
+						_, err := bot.Send(msg)
+						if err != nil {
+							log.Println("Error sending message:", err)
+						}
+						user.AddContactState = Done
+						return
+					}
 				}
 			}
 
@@ -219,4 +327,31 @@ func getAllContacts(username string) ([]Contact, error) {
 		return nil, err
 	}
 	return contactList.Contacts, nil
+}
+
+func addContact(username string, contactname string, contactphone string, contactmail string) (int, error) {
+	log.Println("addcontact")
+	payload := ContactAddToUser{
+		Username: username,
+		ContactInfo: Contact{
+			Name:  contactname,
+			Phone: contactphone,
+			Email: contactmail,
+		},
+	}
+	payload_bytes, err := json.Marshal(payload)
+	if err != nil {
+		return -1, err
+	}
+	req, err := http.NewRequest("PUT", server_url+"/add_contact", bytes.NewBuffer(payload_bytes))
+	if err != nil {
+		return -1, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return -1, err
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode, nil
 }
