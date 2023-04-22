@@ -91,6 +91,8 @@ func main() {
 			users[userID] = &User{State: Initial}
 		}
 		user := users[userID]
+
+		// Checking the user start, the user state flow should be initial -> waitingForUsername -> waitingForPassword -> Connected.
 		switch user.State {
 		case Initial:
 			if update.Message.Text == "/start" {
@@ -143,10 +145,9 @@ func main() {
 					log.Println("Error sending message:", err)
 				}
 			}
+
+		//user is connected now. functionality is available
 		case Connected:
-			fmt.Println(user.AddContactState)
-			fmt.Println(user.State)
-			fmt.Println(update.Message.Text)
 			if update.Message.Text == "/getAllContacts" {
 				contacts, err := getAllContacts(user.Username)
 				if err != nil {
@@ -166,6 +167,7 @@ func main() {
 					log.Println("Error sending message:", err)
 				}
 			}
+			//add contact flow is: initalAdd -> WaitingForUsernameAdd -> WaitingForPhoneAdd -> ConfirmationAdd -> Done
 			if update.Message.Text == "/addContact" {
 				user.AddContactState = InitialAdd
 				msg := tgbotapi.NewMessage(userID, "Please enter contact data:")
@@ -174,6 +176,7 @@ func main() {
 					log.Println("Error sending message:", err)
 				}
 			}
+			// if add contact state is not done, then the user is in process to add contact
 			if user.AddContactState != Done {
 				switch user.AddContactState {
 				case InitialAdd:
@@ -207,12 +210,6 @@ func main() {
 					if err != nil {
 						log.Println("Error sending message:", err)
 					}
-				// case ConfirmationAdd:
-				// 	if update.Message.Text == "YES" || update.Message.Text == "yes" {
-				// 		user.AddContactState = PositiveFullAdd
-				// 	} else {
-				// 		user.AddContactState = NegaiveFullAdd
-				// 	}
 				case ConfirmationAdd:
 					user.AddContactState = Done
 					if update.Message.Text == "YES" || update.Message.Text == "yes" {
