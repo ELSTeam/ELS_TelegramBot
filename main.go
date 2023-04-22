@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -54,6 +55,10 @@ const (
 	Done
 )
 
+type Server_alert struct {
+	Username string `json:"username"`
+}
+
 // contact instance to save the data from user bot.
 var global_contact Contact
 
@@ -67,6 +72,11 @@ func main() {
 	if API_TOKEN == "" {
 		log.Panic("No API_TOKEN found")
 	}
+
+	fmt.Println("Setting up the http server")
+	http.HandleFunc("/fall_telegram", fall_handler)
+	go http.ListenAndServe(":8090", nil)
+
 	bot, err := tgbotapi.NewBotAPI(API_TOKEN)
 	if err != nil {
 		log.Panic(err)
@@ -351,4 +361,18 @@ func addContact(username string, contactname string, contactphone string, contac
 	}
 	defer resp.Body.Close()
 	return resp.StatusCode, nil
+}
+
+func fall_handler(w http.ResponseWriter, req *http.Request) {
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		log.Println("Error from getting server updates")
+	}
+	var payload Server_alert
+	err = json.Unmarshal(body, &payload)
+	if err != nil {
+		log.Println("Erro from decoding the data")
+	}
+	log.Printf("Got payload: %+v", payload)
+	w.WriteHeader(http.StatusOK)
 }
