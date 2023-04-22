@@ -62,7 +62,7 @@ func main() {
 		user := users[userID]
 		switch user.State {
 		case Initial:
-			if update.Message.Text == "/signin" {
+			if update.Message.Text == "/start" {
 				user.State = WaitingForUsername
 				msg := tgbotapi.NewMessage(userID, "Please enter your username:")
 				_, err := bot.Send(msg)
@@ -70,7 +70,7 @@ func main() {
 					log.Println("Error sending message:", err)
 				}
 			} else {
-				msg := tgbotapi.NewMessage(userID, "Please sign in first by typing /signin")
+				msg := tgbotapi.NewMessage(userID, "Please sign in first by typing /start")
 				_, err := bot.Send(msg)
 				if err != nil {
 					log.Println("Error sending message:", err)
