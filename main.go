@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -24,6 +25,12 @@ type User struct {
 	Username string
 	Password string
 	State    UserState
+}
+
+type Contact struct {
+	Name  string `json:"name"`
+	Phone string `json:phone`
+	Email string `json:email`
 }
 
 var users = make(map[int64]*User)
@@ -93,8 +100,13 @@ func main() {
 			}
 			if connected == 200 {
 				user.State = Connected
-				msg := tgbotapi.NewMessage(userID, "Connected.")
+				msg := tgbotapi.NewMessage(userID, "Welcome "+user.Username)
 				_, err := bot.Send(msg)
+				if err != nil {
+					log.Println("Error sending message:", err)
+				}
+				msg = tgbotapi.NewMessage(userID, "Menu")
+				_, err = bot.Send(msg)
 				if err != nil {
 					log.Println("Error sending message:", err)
 				}
@@ -106,6 +118,27 @@ func main() {
 					log.Println("Error sending message:", err)
 				}
 			}
+		case Connected:
+			if update.Message.Text == "getAllContacts" {
+				contacts, err := getAllContacts(user.Username)
+				if err != nil {
+					log.Println("Error getting contacts:", err)
+				}
+				var message_to_user string
+				for index, contact := range contacts {
+					message_to_user += strconv.Itoa(index+1) + ")"
+					message_to_user += "\n"
+					message_to_user += "Name: " + contact.Name + "\n"
+					message_to_user += "Phone: " + contact.Phone + "\n"
+					message_to_user += "Email: " + contact.Email + "\n"
+				}
+				msg := tgbotapi.NewMessage(userID, message_to_user)
+				_, err = bot.Send(msg)
+				if err != nil {
+					log.Println("Error sending message:", err)
+				}
+			}
+
 		}
 	}
 }
@@ -148,4 +181,42 @@ func checkLogin(username string, password string) (int, error) {
 
 	// Return the status code of the HTTP response
 	return resp.StatusCode, nil
+}
+
+func getAllContacts(username string) ([]Contact, error) {
+	log.Println("check_all_contacts")
+	log.Println(username)
+
+	payload := struct {
+		Username string `json:"username"`
+	}{
+		Username: username,
+	}
+	payload_bytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", server_url+"/all_contacts", bytes.NewBuffer(payload_bytes))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	var contactList struct {
+		Contacts []Contact `json:"contacts"`
+	}
+
+	// Decode the return into the contactList struct
+	err = json.NewDecoder(resp.Body).Decode(&contactList)
+	if err != nil {
+		return nil, err
+	}
+	return contactList.Contacts, nil
 }
