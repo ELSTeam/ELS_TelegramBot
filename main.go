@@ -25,6 +25,7 @@ const (
 type User struct {
 	Username        string
 	Password        string
+	ChatID          int64
 	State           UserState
 	AddContactState ContactAddState
 }
@@ -63,6 +64,9 @@ type Server_alert struct {
 var global_contact Contact
 
 var users = make(map[int64]*User)
+var usernames_to_user_map = make(map[string]*User)
+
+var bot *tgbotapi.BotAPI
 
 var server_url = "http://localhost:5000"
 
@@ -77,7 +81,8 @@ func main() {
 	http.HandleFunc("/fall_telegram", fall_handler)
 	go http.ListenAndServe(":8090", nil)
 
-	bot, err := tgbotapi.NewBotAPI(API_TOKEN)
+	var err error
+	bot, err = tgbotapi.NewBotAPI(API_TOKEN)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -137,6 +142,11 @@ func main() {
 			if connected == 200 {
 				user.State = Connected
 				msg := tgbotapi.NewMessage(userID, "Welcome "+user.Username)
+
+				// Add the register user to the map
+				usernames_to_user_map[user.Username] = user
+				user.ChatID = userID
+
 				_, err := bot.Send(msg)
 				if err != nil {
 					log.Println("Error sending message:", err)
@@ -375,4 +385,11 @@ func fall_handler(w http.ResponseWriter, req *http.Request) {
 	}
 	log.Printf("Got payload: %+v", payload)
 	w.WriteHeader(http.StatusOK)
+
+	falling_user := usernames_to_user_map[payload.Username]
+	msg := tgbotapi.NewMessage(falling_user.ChatID, "He fell!!!")
+	_, err = bot.Send(msg)
+	if err != nil {
+		log.Println("Error from sending falling alert in telegram", err)
+	}
 }
