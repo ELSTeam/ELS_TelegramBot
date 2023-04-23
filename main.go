@@ -59,6 +59,9 @@ const (
 type Server_alert struct {
 	Username string `json:"username"`
 }
+type Vidoe_alert struct {
+	Data []byte `json:"data"`
+}
 
 // contact instance to save the data from user bot.
 var global_contact Contact
@@ -392,4 +395,47 @@ func fall_handler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Println("Error from sending falling alert in telegram", err)
 	}
+	if falling_user != nil {
+		fmt.Println("Trying to get the video")
+		var video []byte
+		video, err = get_video_from_server(payload.Username)
+		if err != nil {
+			fmt.Println("Got error from getting the video from server")
+			return
+		}
+		// err = ioutil.WriteFile("video.mp4", video, 0644)
+		// if err != nil {
+		// 	fmt.Println("Error writing video to file:", err)
+		// }
+
+		videoFile := tgbotapi.FileBytes{
+			Name:  "video.mp4",
+			Bytes: video,
+		}
+		video_send := tgbotapi.NewVideo(falling_user.ChatID, videoFile)
+		_, err = bot.Send(video_send)
+		if err != nil {
+			fmt.Println("Error sending the video:", err)
+		}
+	}
+
+}
+
+func get_video_from_server(username string) ([]byte, error) {
+	post_body, _ := json.Marshal(map[string]string{
+		"username": username,
+	})
+	responseBody := bytes.NewBuffer(post_body)
+	resp, err := http.Post(server_url+"/get_latest_video", "application/json", responseBody)
+	if err != nil {
+		log.Println("Error sending latest video request")
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("Error getting latest video request")
+		return nil, err
+	}
+	return body, nil
 }
