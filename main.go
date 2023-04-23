@@ -396,17 +396,17 @@ func fall_handler(w http.ResponseWriter, req *http.Request) {
 		log.Println("Error from sending falling alert in telegram", err)
 	}
 	if falling_user != nil {
-		fmt.Println("Trying to get the video")
 		var video []byte
 		video, err = get_video_from_server(payload.Username)
 		if err != nil {
 			fmt.Println("Got error from getting the video from server")
 			return
 		}
-		// err = ioutil.WriteFile("video.mp4", video, 0644)
-		// if err != nil {
-		// 	fmt.Println("Error writing video to file:", err)
-		// }
+		// fmt.Println(video)
+		err = ioutil.WriteFile("video.mp4", video, 0644)
+		if err != nil {
+			fmt.Println("Error writing video to file:", err)
+		}
 
 		videoFile := tgbotapi.FileBytes{
 			Name:  "video.mp4",
