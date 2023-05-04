@@ -144,18 +144,22 @@ func main() {
 			}
 			if connected == 200 {
 				user.State = Connected
-				msg := tgbotapi.NewMessage(userID, "Welcome "+user.Username)
+				msg := tgbotapi.NewMessage(userID, "Welcome "+user.Username+"\n")
 
 				// Add the register user to the map
 				usernames_to_user_map[user.Username] = user
 				user.ChatID = userID
-
 				_, err := bot.Send(msg)
 				if err != nil {
 					log.Println("Error sending message:", err)
 				}
+				menu_string, error := get_menu(user.Username)
+				if error != nil {
+					log.Println("Error getting menu message")
+					menu_string = "Error"
+				}
 				user.AddContactState = Done
-				msg = tgbotapi.NewMessage(userID, "Menu")
+				msg = tgbotapi.NewMessage(userID, menu_string)
 				_, err = bot.Send(msg)
 				if err != nil {
 					log.Println("Error sending message:", err)
@@ -438,4 +442,15 @@ func get_video_from_server(username string) ([]byte, error) {
 		return nil, err
 	}
 	return body, nil
+}
+
+func get_menu(username string) (string, error) {
+	message := "Following features are: \n"
+	message += "/menu -> Prints this menu.\n"
+	message += "/getAllContacts -> Prints contacts.\n"
+	message += "/addcontact -> Add contact to notification list.\n"
+
+	message += "If your elder will fall, we will send you a message via this channel and provide a video.\n"
+	message += "Thanks. ELS team.\n"
+	return message, nil
 }
