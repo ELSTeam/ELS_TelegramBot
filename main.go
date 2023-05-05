@@ -276,9 +276,6 @@ func main() {
 }
 
 func checkLogin(username string, password string) (int, error) {
-	log.Println("checklogin")
-	log.Println(username)
-	log.Println(password)
 	// Create a struct representing the JSON payload
 	payload := struct {
 		Username string `json:"username"`
@@ -390,7 +387,6 @@ func fall_handler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Println("Erro from decoding the data")
 	}
-	log.Printf("Got payload: %+v", payload)
 	w.WriteHeader(http.StatusOK)
 
 	falling_user := usernames_to_user_map[payload.Username]
