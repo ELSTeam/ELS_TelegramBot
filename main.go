@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -109,6 +110,7 @@ func main() {
 			users[userID] = &User{State: Initial}
 		}
 		user := users[userID]
+		fmt.Println(user.State)
 
 		// Checking the user start, the user state flow should be initial -> waitingForUsername -> waitingForPassword -> Connected.
 		switch user.State {
@@ -175,6 +177,7 @@ func main() {
 
 		//user is connected now. functionality is available
 		case Connected:
+			fmt.Println(update.Message.Text)
 			if update.Message.Text == "/getAllContacts" {
 				contacts, err := getAllContacts(user.Username)
 				if err != nil {
@@ -194,8 +197,20 @@ func main() {
 					log.Println("Error sending message:", err)
 				}
 			}
+			if update.Message.Text == "/menu" {
+				msg_value, err := get_menu(user.Username)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				msg := tgbotapi.NewMessage(userID, msg_value)
+				_, err = bot.Send(msg)
+				if err != nil {
+					log.Println("Error sending message:", err)
+				}
+			}
 			//add contact flow is: initalAdd -> WaitingForUsernameAdd -> WaitingForPhoneAdd -> ConfirmationAdd -> Done
-			if update.Message.Text == "/addContact" {
+			if update.Message.Text == "/addcontact" {
 				user.AddContactState = InitialAdd
 				msg := tgbotapi.NewMessage(userID, "Please enter contact data:")
 				_, err := bot.Send(msg)
@@ -390,7 +405,9 @@ func fall_handler(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	falling_user := usernames_to_user_map[payload.Username]
-	msg := tgbotapi.NewMessage(falling_user.ChatID, "He fell!!!")
+	current_time := time.Now()
+	msg_text := fmt.Sprintf("Fall detected - %d/%d/%d", current_time.Day(), current_time.Month(), current_time.Year())
+	msg := tgbotapi.NewMessage(falling_user.ChatID, msg_text)
 	_, err = bot.Send(msg)
 	if err != nil {
 		log.Println("Error from sending falling alert in telegram", err)
