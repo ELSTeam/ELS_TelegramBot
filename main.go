@@ -196,8 +196,7 @@ func main() {
 				if err != nil {
 					log.Println("Error sending message:", err)
 				}
-			}
-			if update.Message.Text == "/menu" {
+			} else if update.Message.Text == "/menu" {
 				msg_value, err := get_menu(user.Username)
 				if err != nil {
 					log.Println(err)
@@ -208,11 +207,17 @@ func main() {
 				if err != nil {
 					log.Println("Error sending message:", err)
 				}
-			}
-			//add contact flow is: initalAdd -> WaitingForUsernameAdd -> WaitingForPhoneAdd -> ConfirmationAdd -> Done
-			if update.Message.Text == "/addcontact" {
+				//add contact flow is: initalAdd -> WaitingForUsernameAdd -> WaitingForPhoneAdd -> ConfirmationAdd -> Done
+			} else if update.Message.Text == "/addcontact" {
+
 				user.AddContactState = InitialAdd
 				msg := tgbotapi.NewMessage(userID, "Please enter contact data:")
+				_, err := bot.Send(msg)
+				if err != nil {
+					log.Println("Error sending message:", err)
+				}
+			} else {
+				msg := tgbotapi.NewMessage(userID, "Please select valid option.\nClick /menu to show options.")
 				_, err := bot.Send(msg)
 				if err != nil {
 					log.Println("Error sending message:", err)
