@@ -75,6 +75,7 @@ var bot *tgbotapi.BotAPI
 var server_url = "http://localhost:5000"
 
 func main() {
+	middleContactCreation := false
 	fmt.Println("Getting the APi token from os.env")
 	API_TOKEN := os.Getenv("API_TOKEN")
 	if API_TOKEN == "" {
@@ -209,7 +210,7 @@ func main() {
 				}
 				//add contact flow is: initalAdd -> WaitingForUsernameAdd -> WaitingForPhoneAdd -> ConfirmationAdd -> Done
 			} else if update.Message.Text == "/addcontact" {
-
+				middleContactCreation = true
 				user.AddContactState = InitialAdd
 				msg := tgbotapi.NewMessage(userID, "Please enter contact data:")
 				_, err := bot.Send(msg)
@@ -217,11 +218,14 @@ func main() {
 					log.Println("Error sending message:", err)
 				}
 			} else {
-				msg := tgbotapi.NewMessage(userID, "Please select valid option.\nClick /menu to show options.")
-				_, err := bot.Send(msg)
-				if err != nil {
-					log.Println("Error sending message:", err)
+				if middleContactCreation == false {
+					msg := tgbotapi.NewMessage(userID, "Please select valid option.\nClick /menu to show options.")
+					_, err := bot.Send(msg)
+					if err != nil {
+						log.Println("Error sending message:", err)
+					}
 				}
+
 			}
 			// if add contact state is not done, then the user is in process to add contact
 			if user.AddContactState != Done {
@@ -259,7 +263,7 @@ func main() {
 					}
 				case ConfirmationAdd:
 					user.AddContactState = Done
-					if update.Message.Text == "YES" || update.Message.Text == "yes" {
+					if update.Message.Text == "YES" || update.Message.Text == "yes" || update.Message.Text == "Yes" {
 						fmt.Println("In positive add")
 						status_code, err := addContact(user.Username, global_contact.Name, global_contact.Phone, global_contact.Email)
 						if err != nil {
@@ -286,8 +290,9 @@ func main() {
 							log.Println("Error sending message:", err)
 						}
 						user.AddContactState = Done
-						return
 					}
+					middleContactCreation = false
+
 				}
 			}
 
@@ -408,10 +413,12 @@ func fall_handler(w http.ResponseWriter, req *http.Request) {
 		log.Println("Erro from decoding the data")
 	}
 	w.WriteHeader(http.StatusOK)
-
 	falling_user := usernames_to_user_map[payload.Username]
-	current_time := time.Now()
-	msg_text := fmt.Sprintf("Fall detected - %d/%d/%d", current_time.Day(), current_time.Month(), current_time.Year())
+	currentDateTime := time.Now().Format("2006-01-02 15:04:05")
+	msg_text := "🚨 Alert: A fall detected! 🚨\n\n" +
+		"Date and Time: " + currentDateTime + "\n" +
+		"Review attached video footage for action.\n" +
+		"Stay vigilant and act accordingly."
 	msg := tgbotapi.NewMessage(falling_user.ChatID, msg_text)
 	_, err = bot.Send(msg)
 	if err != nil {
